@@ -31,11 +31,11 @@ class Avion:
     # y este da la información a la que hace referencia (value)
 
 AIRCRAFT = {
-    "B767-300ER": Avion(145150.0, 283.50,0.01400, 0.04900, 0.01740, 0.04590,26418.0,0.064359, 0.055988, 0.12475,351670.0, 44673.0, 0.10129e-9,0.54005 / 60.0 / 1000.0,557.82 * 0.514444),
-    "B777-300": Avion(237680.0, 428.04,0.01730, 0.04840, 0.01570, 0.04200,36122.0,0.044239, 0.041065, 0.092921,425770.0, 48987.0, 0.66146e-10,0.87843 / 60.0 / 1000.0,3689.7 * 0.514444),
-    "B737": Avion(51710.0, 124.65,0.02700, 0.04410, 0.02350, 0.04450,30152.0,0.036336, 0.053395, 0.16440,145730.0, 55638.0, 0.14200e-10,0.94680 / 60.0 / 1000.0,100000.0 * 0.514444),
-    "A320-212": Avion(64500.0, 122.60,0.02420, 0.04690, 0.02400, 0.03750,12398.0,0.045711, 0.027207, 0.13981,136050.0, 52238.0, 0.26637e-10,0.94000 / 60.0 / 1000.0,100000.0 * 0.514444),
-    "A319-131": Avion(61000.0, 122.60,0.02840, 0.03760, 0.02800, 0.03100,27726.0,0.083084, 0.051765, 0.14767,139000.0, 58900.0, 0.57200e-14,0.68800 / 60.0 / 1000.0,1670.0 * 0.514444),
+    "B767-300ER": Avion(145150, 283.5,0.014, 0.049, 0.0174, 0.0459,26418,0.064359, 0.055988, 0.12475,351670, 44673, 0.10129e-9,0.54005,557.82),
+    "B777-300": Avion(237680, 428.04,0.0173, 0.0484, 0.0157, 0.042,36122,0.044239, 0.041065, 0.092921,425770, 48987, 0.66146e-10,0.87843,3689.7),
+    "B737": Avion(51710, 124.65,0.027, 0.0441, 0.0235, 0.0445,30152,0.036336, 0.053395, 0.16440,145730, 55638, 0.14200e-10,0.94680,100000),
+    "A320-212": Avion(64500, 122.6,0.0242, 0.0469, 0.024, 0.0375,12398,0.045711, 0.027207, 0.13981,136050, 52238, 0.26637e-10,0.94000,100000),
+    "A319-131": Avion(61000, 122.6,0.0284, 0.0376, 0.028, 0.031,27726,0.083084, 0.051765, 0.14767,139000, 58900, 0.57200e-14,0.68800,1670),
 }
 
 # Crear una clase que se llame vuelos y tenga como atributos la información relevante para el gráfico
@@ -62,10 +62,11 @@ T0 = 288.15  # Temperatura a nivel del mar (K)
 P0 = 101325  # Presión a nivel del mar (Pa)
 R_GAS = 287.058  # Constante específica del aire seco (J/(kg*K))
 LAPSE_RATE = 0.0065  # Gradiente térmico troposférico (K/m)
-M2FT = 3.281  # Factor de conversión metros a pies
-H_IAF_M = 1600.0   # Altura del Initial Approach Fix (m)
-H_MAX_M = 12000.0  # Altura máxima donde termina la simulación (m)
-DH_M = 10.0        # Paso de integración en altura (m)
+FT2M = 0.3048  # Metros por pie (m/ft)
+KT2MS = 0.514444  # Metros por segundo por nudo (m/s / kt)
+H_IAF_M = 1600   # Altura del Initial Approach Fix (m)
+H_MAX_M = 12000  # Altura máxima donde termina la simulación (m)
+DH_M = 10   # Paso de integración en altura (m)
 
 
 # FUNCIONES
@@ -89,8 +90,7 @@ def get_isa_density(h_m):
         P=P_11k*math.exp(-G*(h_m-11000)/(R_GAS*T))
     return P/(R_GAS*T)
 
-
-# Para simular el camino que baja cada avión debemos saber desde que altura parte (h_max_m) y hasta que altura hace una
+# Para simular el camino que baja cada avión debemos saber desde qué altura parte (h_max_m) y hasta qué altura hace una
     # bajada continua (hasta el IAF), teniendo en cuenta las condiciones de pesos al llegar.
 
 def getCDO(aircraft_model, MLW_percent):
@@ -110,54 +110,60 @@ def getCDO(aircraft_model, MLW_percent):
     """
     avion = AIRCRAFT[aircraft_model]
 
-    # Condiciones iniciales para la integración hacia atrás (IAF at x=0)
-    x_curr = 0.0
+    # --- CONVERSIÓN DE PARÁMETROS BADA A UNIDADES SI (m, s, N, kg) ---
+    hp_desc_m = avion.hp_desc * FT2M  # ft -> m
+    CT2_m = avion.CT2 * FT2M  # ft -> m
+    CT3_m = avion.CT3 / (FT2M ** 2)  # 1/ft^2 -> 1/m^2
+    CF1_SI = avion.CF1 / (60 * 1000)  # kg/(min*kN) -> kg/(s*N)
+    CF2_SI = avion.CF2 * KT2MS  # knots -> m/s
+
+    # Condiciones iniciales para la integración hacia atrás (IAF en x = 0)
+    x_curr = 0
     h_curr = H_IAF_M
-    m_curr = avion.MLW * (MLW_percent / 100.0)
+    m_curr = avion.MLW * (MLW_percent / 100)
 
     x_list, h_list, m_list = [x_curr], [h_curr], [m_curr]
 
     while h_curr < H_MAX_M:
-        hp_ft = h_curr * M2FT
         rho = get_isa_density(h_curr)
 
-        # Transición de configuración aerodinámica (Approach <= 6000 ft, Clean > 6000 ft)
-        if hp_ft <= 6000.0:
+        # Transición de configuración aerodinámica (usando altitud en metros)
+        if h_curr <= 6000 * FT2M:
             CD0 = avion.CD0_app
             CD2 = avion.CD2_app
             CTdesc = avion.CTdesc_app
         else:
             CD0 = avion.CD0_clean
             CD2 = avion.CD2_clean
-            if hp_ft > avion.hp_desc:
+            if h_curr > hp_desc_m:
                 CTdesc = avion.CTdesc_high
             else:
                 CTdesc = avion.CTdesc_low
 
-        # Cálculo de empuje máximo y empuje en ralentí (Idle Thrust)
-        Tmax = avion.CT1 * (1.0 - hp_ft / avion.CT2 + avion.CT3 * (hp_ft ** 2))
+        # Cálculo de empuje máximo [N] y empuje en ralentí (Idle Thrust) [N] en metros (SI)
+        Tmax = avion.CT1 * (1 - h_curr / CT2_m + CT3_m * (h_curr ** 2))
         T_idle = CTdesc * Tmax
 
-        # Velocidad de Mínima Tasa de Descenso (v_minRoD)
+        # Velocidad de Mínima Tasa de Descenso (v_minRoD) [m/s]
         term_thrust = T_idle / (m_curr * G)
-        inside_sqrt = term_thrust ** 2 + 12.0 * CD0 * CD2
-        v_minRoD = math.sqrt((m_curr * G / (3.0 * rho * avion.S * CD0)) * (term_thrust + math.sqrt(inside_sqrt)))
+        inside_sqrt = term_thrust ** 2 + 12 * CD0 * CD2
+        v_minRoD = math.sqrt((m_curr * G / (3 * rho * avion.S * CD0)) * (term_thrust + math.sqrt(inside_sqrt)))
 
-        # Resistencia aerodinámica (Drag)
-        D = 0.5 * rho * (v_minRoD ** 2) * avion.S * CD0 + (2.0 * CD2 * (m_curr * G) ** 2) / (
+        # Resistencia aerodinámica (Drag) [N]
+        D = 0.5 * rho * (v_minRoD ** 2) * avion.S * CD0 + (2 * CD2 * (m_curr * G) ** 2) / (
                 rho * avion.S * (v_minRoD ** 2))
 
-        # Tasa de descenso (Rate of Descent)
+        # Tasa de descenso (Rate of Descent) [m/s]
         RoD = v_minRoD * (D - T_idle) / (m_curr * G)
 
-        # Caudal de combustible (Fuel Flow)
-        eta = avion.CF1 * (1.0 + v_minRoD / avion.CF2)
+        # Caudal de combustible (Fuel Flow) [kg/s] (En unidades SI: m/s, kg/(s*N), N)
+        eta = CF1_SI * (1 + v_minRoD / CF2_SI)
         FF = eta * T_idle
 
-        # Paso de integración hacia atrás en ALTURA (dt = dh / RoD, por eso no hace falta el tiempo)
+        # Paso de integración hacia atrás en ALTURA (en metros)
         h_next = h_curr + DH_M
-        x_next = x_curr - v_minRoD * DH_M / RoD  # Distancia negativa alejándose del IAF
-        m_next = m_curr + FF * DH_M / RoD  # La masa era mayor antes de consumir combustible
+        x_next = x_curr - v_minRoD * DH_M / RoD  # Distancia horizontal [m]
+        m_next = m_curr + FF * DH_M / RoD  # Masa acumulada [kg]
 
         x_list.append(x_next)
         h_list.append(h_next)
@@ -167,7 +173,7 @@ def getCDO(aircraft_model, MLW_percent):
 
     return x_list, h_list, m_list
 
-#Ejecuta getCOD para cada vuelo que se encuentra en la lista FLIGHTS y devuelve una lista con los resultados
+# Ejecuta getCOD para cada vuelo que se encuentra en la lista FLIGHTS y devuelve una lista con los resultados
 
 def run_all_flights():
     flights=FLIGHTS
@@ -177,8 +183,7 @@ def run_all_flights():
         results.append({"aircraft": flight.aircraft, "MLW_percent": flight.MLW_percent, "x": x, "h": h, "m": m})
     return results
 
-
-# Función de testing que muestra la información de los vuelos en la consola
+# Función de testing que muestra información relevante en la consola (BORRAR LUEGO SI ES NECESARIO)
 
 def imprimir_pruebas(flight_results):
     print("AIRCRAFT (datos BADA cargados por avion)")
