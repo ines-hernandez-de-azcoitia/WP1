@@ -86,14 +86,6 @@ def get_isa_density(h_m):
     return P / (R_GAS * T)
 
 
-# ==============================================================================
-# FUNCIÓN MODULAR REQUERIDA: getCDO
-# h_iaf_m y h_max_m se dan directamente en metros (limites de la simulacion).
-# Internamente se sigue pasando a pies (hp_ft) solo donde lo exige la formula
-# de empuje de la BADA (CT2, CT3, hp_desc siguen definidos en pies).
-# La variable independiente de la integracion es la ALTURA (paso dh_m), no el tiempo.
-# ==============================================================================
-
 # Para simular el camino que baja cada avión debemos saber desde que altura parte (h_max_m) y hasta que altura hace una
     # bajada continua (hasta el IAF), teniendo en cuenta las condiciones de pesos al llegar.
 
