@@ -92,86 +92,76 @@ def get_isa_density(h_m):
 
 # Para simular el camino que baja cada avión debemos saber desde qué altura parte (h_max_m) y hasta qué altura hace una
     # bajada continua (hasta el IAF), teniendo en cuenta las condiciones de pesos al llegar.
+# Los cálculos irán en el siguiente orden: thrust, velocidad mínima de RoD, drag, RoD, fuel flow y el
+    # conjunto de altura posición, peso y tiempo.
 
 def getCDO(aircraft_model, MLW_percent):
-    """
-    Simula la trayectoria CDO hacia atrás desde el IAF hasta h_max_m,
-    integrando en altura (sin variable de tiempo).
-    Parámetros:
-        aircraft_model (str): Nombre del modelo (ej. "B767-300ER", "A320-212", etc.)
-        MLW_percent (float): Porcentaje del Maximum Landing Weight (ej. 80 o 100)
-        h_iaf_m (float): Altitud de llegada al IAF en METROS (por defecto 1600 m)
-        h_max_m (float): Altitud máxima donde finalizar la simulación en METROS (por defecto 12000 m)
-        dh_m (float): Paso de integración en altura en METROS (por defecto 10 m)
-    Retorna:
-        x (list): Distancia horizontal en metros (x <= 0 respecto al IAF)
-        h (list): Altitudes en metros
-        m (list): Masa de la aeronave en kg
-    """
     avion = AIRCRAFT[aircraft_model]
 
-    # --- CONVERSIÓN DE PARÁMETROS BADA A UNIDADES SI (m, s, N, kg) ---
-    hp_desc_m = avion.hp_desc * FT2M  # ft -> m
-    CT2_m = avion.CT2 * FT2M  # ft -> m
-    CT3_m = avion.CT3 / (FT2M ** 2)  # 1/ft^2 -> 1/m^2
-    CF1_SI = avion.CF1 / (60 * 1000)  # kg/(min*kN) -> kg/(s*N)
-    CF2_SI = avion.CF2 * KT2MS  # knots -> m/s
+    # Conversión de unidades
+    hp_desc_m=avion.hp_desc*FT2M  # ft -> m
+    CT2=avion.CT2*FT2M  # ft -> m
+    CT3=avion.CT3/(FT2M**2)  # 1/ft^2 -> 1/m^2
+    CF1=avion.CF1/(60*1000)  # kg/(min*kN) -> kg/(s*N)
+    CF2=avion.CF2*KT2MS  # knots -> m/s
 
-    # Condiciones iniciales para la integración hacia atrás (IAF en x = 0)
-    x_curr = 0
-    h_curr = H_IAF_M
-    m_curr = avion.MLW * (MLW_percent / 100)
+    # Condiciones iniciales
+    x_now=0
+    h_now=H_IAF_M
+    m_now=avion.MLW*(MLW_percent/100)
+    t_now=0
 
-    x_list, h_list, m_list = [x_curr], [h_curr], [m_curr]
+    x_list, h_list, m_list, t_list=[x_now], [h_now], [m_now], [t_now]
 
-    while h_curr < H_MAX_M:
-        rho = get_isa_density(h_curr)
+    while h_now<H_MAX_M:
+        density=get_isa_density(h_now)
+        area=avion.S
+        CT1=avion.CT1
 
-        # Transición de configuración aerodinámica (usando altitud en metros)
-        if h_curr <= 6000 * FT2M:
-            CD0 = avion.CD0_app
-            CD2 = avion.CD2_app
-            CTdesc = avion.CTdesc_app
+        if h_now<(6000*FT2M):  # Configuración de aproximación (solo por debajo del IAF)
+            CD0=avion.CD0_app
+            CD2=avion.CD2_app
+            CTdesc=avion.CTdesc_app
         else:
-            CD0 = avion.CD0_clean
-            CD2 = avion.CD2_clean
-            if h_curr > hp_desc_m:
-                CTdesc = avion.CTdesc_high
-            else:
-                CTdesc = avion.CTdesc_low
+            CD0=avion.CD0_clean
+            CD2=avion.CD2_clean
+            if h_now>hp_desc_m:  # Si estamos en altura de descenso high...
+                CTdesc=avion.CTdesc_high
+            else:  # O en la low
+                CTdesc=avion.CTdesc_low
 
-        # Cálculo de empuje máximo [N] y empuje en ralentí (Idle Thrust) [N] en metros (SI)
-        Tmax = avion.CT1 * (1 - h_curr / CT2_m + CT3_m * (h_curr ** 2))
-        T_idle = CTdesc * Tmax
+        # Thrust
+        Tmax=CT1*(1-(h_now/CT2)+(CT3*(h_now**2)))
+        T_desc=CTdesc*Tmax
 
-        # Velocidad de Mínima Tasa de Descenso (v_minRoD) [m/s]
-        term_thrust = T_idle / (m_curr * G)
-        inside_sqrt = term_thrust ** 2 + 12 * CD0 * CD2
-        v_minRoD = math.sqrt((m_curr * G / (3 * rho * avion.S * CD0)) * (term_thrust + math.sqrt(inside_sqrt)))
+        # Velocidad mínima RoD
+        term_thrust=T_desc/(m_now*G)
+        v_minRoD=math.sqrt(((m_now*G)/(3*density*area*CD0))*(term_thrust+math.sqrt((term_thrust**2)+12*CD0*CD2)))
 
-        # Resistencia aerodinámica (Drag) [N]
-        D = 0.5 * rho * (v_minRoD ** 2) * avion.S * CD0 + (2 * CD2 * (m_curr * G) ** 2) / (
-                rho * avion.S * (v_minRoD ** 2))
+        # Drag
+        CL=(2*m_now*G)/(density*area*(v_minRoD**2))
+        D=0.5*density*(v_minRoD**2)*area*(CD0+(CD2*CL**2))
 
-        # Tasa de descenso (Rate of Descent) [m/s]
-        RoD = v_minRoD * (D - T_idle) / (m_curr * G)
+        # RoD
+        RoD=v_minRoD*(D-T_desc)/(m_now*G)
 
-        # Caudal de combustible (Fuel Flow) [kg/s] (En unidades SI: m/s, kg/(s*N), N)
-        eta = CF1_SI * (1 + v_minRoD / CF2_SI)
-        FF = eta * T_idle
+        # Fuel flow
+        FF=CF1*(1+v_minRoD/CF2)*T_desc
 
-        # Paso de integración hacia atrás en ALTURA (en metros)
-        h_next = h_curr + DH_M
-        x_next = x_curr - v_minRoD * DH_M / RoD  # Distancia horizontal [m]
-        m_next = m_curr + FF * DH_M / RoD  # Masa acumulada [kg]
+        # Conjunto para los vectores
+        h_next=h_now+DH_M
+        x_next=x_now-v_minRoD*(DH_M/RoD)
+        m_next=m_now+FF*(DH_M/RoD)
+        t_next=t_now-(DH_M/RoD)
 
         x_list.append(x_next)
         h_list.append(h_next)
         m_list.append(m_next)
+        t_list.append(t_next)
 
-        h_curr, x_curr, m_curr = h_next, x_next, m_next
+        h_now, x_now, m_now, t_now=h_next, x_next, m_next, t_next
 
-    return x_list, h_list, m_list
+    return x_list, h_list, m_list, t_list
 
 # Ejecuta getCOD para cada vuelo que se encuentra en la lista FLIGHTS y devuelve una lista con los resultados
 
@@ -179,8 +169,8 @@ def run_all_flights():
     flights=FLIGHTS
     results=[]
     for flight in flights:
-        x, h, m =getCDO(flight.aircraft, flight.MLW_percent)
-        results.append({"aircraft": flight.aircraft, "MLW_percent": flight.MLW_percent, "x": x, "h": h, "m": m})
+        x, h, m, t=getCDO(flight.aircraft, flight.MLW_percent)
+        results.append({"aircraft": flight.aircraft, "MLW_percent": flight.MLW_percent, "x": x, "h": h, "m": m, "t": t})
     return results
 
 # Función de testing que muestra información relevante en la consola (BORRAR LUEGO SI ES NECESARIO)
