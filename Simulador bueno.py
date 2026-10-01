@@ -2,7 +2,7 @@ import math
 import matplotlib.pyplot as plt
 
 
-# CLASSES Y RELLENARLAS
+# CLASES Y RELLENARLAS
 
 # Crear una clase que se llame avión y tenga toda la información sobre el propio avión en diferentes atributos
 # Hay 15 atributos que salen directamente de la tabla del documento WP1-Simulator development
