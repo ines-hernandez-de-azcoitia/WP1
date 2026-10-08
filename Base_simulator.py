@@ -175,7 +175,7 @@ def run_all_flights():
 
 # Función de testing que muestra información relevante en la consola (BORRAR LUEGO SI ES NECESARIO)
 
-def imprimir_pruebas(flight_results):
+def testing(flight_results):
     print("AIRCRAFT (datos BADA cargados por avion)")
 
     for nombre, avion in AIRCRAFT.items():
@@ -221,7 +221,7 @@ def imprimir_pruebas(flight_results):
 if __name__ == "__main__":
     flight_results = run_all_flights()
 
-    imprimir_pruebas(flight_results)
+    testing(flight_results)
 
     plt.figure(figsize=(12, 7))
     for res in flight_results:
