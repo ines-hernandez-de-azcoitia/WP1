@@ -43,7 +43,7 @@ AIRCRAFT = {
 
 class Vuelo:
     def __init__(self, aircraft, MLW_percent, h_iaf_m=1600.0):
-        self.aircraft = aircraft          # nombre del modelo (key de AIRCRAFT)
+        self.aircraft = aircraft          # Nombre del modelo (key de AIRCRAFT)
         self.MLW_percent = MLW_percent    # % del Maximum Landing Weight
 
 # Vector llamado FLIGHTS que tiene en cada posición la clase vuelo
