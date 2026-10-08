@@ -213,6 +213,7 @@ def imprimir_pruebas(flight_results):
         print(f"  x -> inicio: {res["x"][0]:.2f} m   |  final: {res["x"][-1]:.2f} m")
         print(f"  h -> inicio: {res["h"][0]:.2f} m   |  final: {res["h"][-1]:.2f} m")
         print(f"  m -> inicio: {res["m"][0]:.2f} kg  |  final: {res["m"][-1]:.2f} kg")
+        print(f"  t -> inicio: {res["t"][0]:.2f} s  |  final: {res["t"][-1]:.2f} s")
 
 
 # ACCIONADOR DEL CÓDIGO
