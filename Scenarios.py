@@ -1,4 +1,3 @@
-import numpy as np
 from Base_simulator import getCDO
 
 
@@ -50,17 +49,20 @@ def hms(seconds):
     s=int(round(seconds))
     return f"{s//3600:02d}:{(s%3600)//60:02d}:{s%60:02d}"
 
-# Para una arrival, simula su CDO y mira a qué altura y cuánto tiempo antes del IAF estaba cuando le quedaban dist
-# getCDO devuelve x (<= 0), h y t (<= 0) desde el IAF hacia atrás. np.interp necesita la x creciente, por eso se dan la vuelta las listas
+# Para una arrival, simula su CDO y mira a qué altura y cuánto tiempo a cuanto tiempo del IAF está cuando le queda la distancia .dist
+    # que es la distancia entre el STAR y el IAF
+# getCDO devuelve x, h y t en negativo/de final a inicio (ya que va hacia atrás).
 
 def calcular_cdo(arrival):
-    x, h, m, t= getCDO(arrival.aircraft, arrival.MLW_percent)
+    x, h, m, t=getCDO(arrival.aircraft, arrival.MLW_percent)
     d=arrival.dist*NM2M
-    if d>-x[-1]:
-        raise ValueError(f"{arrival.star}: la STAR ({d:.0f} m) es mas larga que el CDO simulado ({-x[-1]:.0f} m)")
-    # Usando la función de interpolar de numpy
-    arrival.alt_wp=float(np.interp(-d,x[::-1],h[::-1]))
-    arrival.time=float(-np.interp(-d,x[::-1],t[::-1]))
+    # Busca un valor de i donde la distáncia de STAR-IAF sea igual o muy aproximada a un punto simulado
+    # Ese punto i tiene la altura y cuanto tiempo se tarda en llegar (porque el número de puntos simulados=segundos pasados)
+    i=0
+    while x[i]>-d:
+        i+=1
+    arrival.alt_wp=h[i]
+    arrival.time=-t[i]
 
 # Función que atribuye el orden de llegada al IAF en el scenario 1
 
