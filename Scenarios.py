@@ -1,35 +1,33 @@
 from Base_simulator import getCDO
 
 
-# CONSTANTES
+# CONSTANTS
 
-NM2M=1852                      # De MN a m
-T_ARRIVAL=(11*3600)+(45*60)    # 11:45:00 en seconds desde las 00:00:00 (hora de arrival al primer WP de cada STAR)
-SEP=120                        # Separación en el IAF del Scenario 2 (2 minutos)
+NM2M=1852                      # MN --> m
+T_ARRIVAL=(11*3600)+(45*60)    # 11:45:00 in seconds
+SEP=120                        # 2 min separation for Scenario 2
 
 
-# CLASE LLEGADA
+# CLASSES
 
-# Cada arrival es un aircraft que vuela una STAR concreta hacia el IAF (a 6000 ft)
-# Los atributos con "None" se rellenarán con las funciones que hacen los cálculos
+# Every arrival is an aircraft with its information
 
 class Arrival:
     def __init__(self, aircraft, star, MLW_percent, dist):
-        self.aircraft=aircraft          # Nombre del modelo
-        self.star=star                  # nombre del STAR
-        self.MLW_percent=MLW_percent    # % del Maximum Landing Weight
-        self.dist=dist                  # Del primer WP de la STAR al IAF (NM)
-        self.alt_wp=None                # Altitud en el primer WP (la que da el CDO) (m)
-        self.time=None                  # Tiempo del primer WP al IAF (s)
-        self.toa_iaf_1=None             # Hora de arrival al IAF (s)
+        self.aircraft=aircraft         
+        self.star=star                  
+        self.MLW_percent=MLW_percent   
+        self.dist=dist                  # From the first WP to the IAF (NM)
+        self.alt_wp=None                # m
+        self.time=None                  # Time from the WP to the IAF (s)
+        self.toa_iaf_1=None            
         self.order=None
-        self.sep_prev_1=None            # Separación con el anterior en el IAF (s)
-        self.toa_iaf_2=None             # Hora de arrival al IAF (s)
-        self.delay_2=None               # Retraso aplicado (s)
-        self.toa_wp_2=None              # Hora de arrival al primer WP (s)
+        self.sep_prev_1=None           
+        self.toa_iaf_2=None            
+        self.delay_2=None               
+        self.toa_wp_2=None              
 
-# Vector llamado ARRIVALS que tiene en cada posición la clase vuelo
-# La distancia es la suma de las distancias entre diferentes waypoints hasta el IAF
+# Vector named ARRIVALS with the previous class
 
 ARRIVALS = [
     Arrival("B767-300ER", "ALBER1Z", 80,  19.5+22.4+10.5+6.9+10.4),    # ALBER-CUTXE-UTHAN-ENJUC-UCREQ-SLL
@@ -41,19 +39,17 @@ ARRIVALS = [
 ]
 
 
-# FUNCIONES
+# FUNCTIONS
 
-# Pasa los segundos al formato de HH:MM:SS
+# Creates the HH:MM:SS format
 
 def hms(seconds):
     s=int(round(seconds))
     return f"{s//3600:02d}:{(s%3600)//60:02d}:{s%60:02d}"
 
-# Para una arrival, simula su CDO y mira a qué altura y cuánto tiempo a cuanto tiempo del IAF está cuando le queda la distancia .dist
-    # que es la distancia entre el STAR y el IAF
-# getCDO devuelve x, h y t en negativo/de final a inicio (ya que va hacia atrás).
+# Simulates the CDO and looks at the time and altitude at the distance from WP to IAF
 
-def calcular_cdo(arrival):
+def calc_cdo(arrival):
     x, h, m, t=getCDO(arrival.aircraft, arrival.MLW_percent)
     d=arrival.dist*NM2M
     # Busca un valor de i donde la distáncia de STAR-IAF sea igual o muy aproximada a un punto simulado
@@ -64,20 +60,20 @@ def calcular_cdo(arrival):
     arrival.alt_wp=h[i]
     arrival.time=-t[i]
 
-# Función que atribuye el orden de llegada al IAF en el scenario 1
+# Arriving order
 
 def key_toa_1(arrival):
     return arrival.toa_iaf_1
 
 
-# SCENARIO 1: todos llegan al primer WP a las 11:45:00
+# SCENARIO 1
 
 def scenario_1():
     for arrival in ARRIVALS:
-        calcular_cdo(arrival)
+        calc_cdo(arrival)
         arrival.toa_iaf_1=T_ARRIVAL+arrival.time
 
-    sequence=sorted(ARRIVALS,key=key_toa_1)  # La key indica el parametro que usamos para ordenar las arrivals (la posición)
+    sequence=sorted(ARRIVALS,key=key_toa_1)
 
     for i, arrival in enumerate(sequence):
         arrival.order=i+1
@@ -94,7 +90,7 @@ def print_scenario_1():
               f"{arrival.time:>11.0f}{hms(arrival.toa_iaf_1):>10}{arrival.order:>7}{sep:>8}")
 
 
-# SCENARIO 2: 2 minutos exactos en el IAF, mismo order de llegada que en scenario 1
+# SCENARIO 2
 
 def scenario_2(sequence):
     t_first=sequence[0].toa_iaf_1
@@ -111,7 +107,7 @@ def print_scenario_2():
               f"{hms(arrival.toa_iaf_2):>11}{arrival.delay_2:>+12.0f}{hms(arrival.toa_wp_2):>10}")
 
 
-# ACCIONADOR DEL CÓDIGO
+# CODE STARTER
 
 if __name__ == "__main__":
     sequence=scenario_1()

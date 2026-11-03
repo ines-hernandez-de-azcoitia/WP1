@@ -2,15 +2,15 @@ import math
 import matplotlib.pyplot as plt
 
 
-# CLASES Y RELLENARLAS
+# CLASSES
 
-# Clase que tiene toda la información sobre el aircraft en diferentes atributos
-# Hay 15 atributos que salen directamente de la tabla del documento WP1-Simulator development
+# Classes that have all  the aircraft information
+# Everything comes from the WP1-Simulator development
 
 class Aircraft:
     def __init__(self, MLW, S, CD0_app, CD2_app, CD0_clean, CD2_clean, hp_desc,CTdesc_high, CTdesc_low, CTdesc_app, CT1, CT2, CT3, CF1, CF2):
         self.MLW = MLW                    # kg
-        self.S = S                        # Superfície del ala (m^2)
+        self.S = S                        # Wingspan (m^2)
         self.CD0_app = CD0_app
         self.CD2_app = CD2_app
         self.CD0_clean = CD0_clean
@@ -25,10 +25,7 @@ class Aircraft:
         self.CF1 = CF1                    # kg/(s*N)
         self.CF2 = CF2                    # m/s
 
-# Diccionario llamado AIRCRAFT, donde cada elemento es el conjunto del nombre del aircraft y la clase con su información
-# Los diccionarios no los vimos en I1, pero su función es relativamente similar a un vector, excepto que cada elemento se compone de
-    # dos partes --> key:value. En este en vez de llamar a la información por su posición en el "vector" se le asigna un nombre (key)
-    # y este da la información a la que hace referencia (value)
+# Dictionary named AIRCRAFT, every element has the name of the aircraft as the key and the class as the value
 
 AIRCRAFT = {
     "B767-300ER": Aircraft(145150, 283.5,0.014, 0.049, 0.0174, 0.0459,26418,0.064359, 0.055988, 0.12475,351670, 44673, 0.10129e-9,0.54005,557.82),
@@ -38,14 +35,14 @@ AIRCRAFT = {
     "A319-131": Aircraft(61000, 122.6,0.0284, 0.0376, 0.028, 0.031,27726,0.083084, 0.051765, 0.14767,139000, 58900, 0.57200e-14,0.68800,1670),
 }
 
-# Clase que tiene como atributos la información relevante para el gráfico
+# Auxiliary class with relevant information for the plot
 
 class Flight:
     def __init__(self, aircraft, MLW_percent):
-        self.aircraft = aircraft          # Key de AIRCRAFT
+        self.aircraft = aircraft          # Key from AIRCRAFT
         self.MLW_percent = MLW_percent
 
-# Vector llamado FLIGHTS que tiene en cada posición la clase vuelo
+# Vector named FLIGHTS with the previous class
 
 FLIGHTS = [Flight("B767-300ER",100), Flight("B767-300ER",80),
 Flight("B777-300",100), Flight("B777-300",80),
@@ -54,56 +51,47 @@ Flight("A320-212",100),Flight("A320-212",80),
 Flight("A319-131",100),Flight("A319-131",80)]
 
 
-# CONSTANTES
+# CONSTANTS
 
 G = 9.81
-T0 = 288.15             # Temperatura a nivel del mar (K)
-P0 = 101325             # Presión a nivel del mar (Pa)
-R_GAS = 287.058         # Constante específica del aire seco (J/(kg*K))
-LAPSE_RATE = 0.0065     # Gradiente térmico troposférico (K/m)
-FT2M = 0.3048           # De ft a m
-KT2MS = 0.514444        # De kts a m/s
-H_IAF = 1600            # Altura del IAF (m)
-H_MAX = 12000           # Altura máxima donde termina la simulación (m)
+T0 = 288.15             # Temperature SL (K)
+P0 = 101325             # Pressure SL (Pa)
+R_GAS = 287.058         # Universal constant for ideal gases (J/(kg*K))
+LAPSE_RATE = 0.0065     # Temperature lapse rate (K/m)
+FT2M = 0.3048           # ft --> m
+KT2MS = 0.514444        # kts --> m/s
+H_IAF = 1600
+H_MAX = 12000
 
 
-# FUNCIONES
+# FUNCTIONS
 
-# Depende de la altura a la que está la aeronave la densidad del aire cambia. No es lo mismo volar a 12000 m que a 1600 m
-    # y, por lo tanto, debemos tener eso en cuenta
-# El cálculo es el siguiente: por debajo de la troposfera (11000 m) la temperatura baja linealmente y la presión sigue
-    # una fórmula específica, pero en la troposfera se mantiene la temperatura constante y la presión se le añade una
-    # expresión con exponencial
-# Con esta información de presión y temperatura asumimos/tratamos el aire como un gas ideal y, por lo tanto, usamos una
-    # variación de la fórmula PV=nRT
+# Density depending on altitude
 
 def get_isa_density(h_m):
     if h_m <= 11000:
         T=T0-LAPSE_RATE*h_m
-        P=P0*(T/ T0)**(G/(R_GAS*LAPSE_RATE))
+        P=P0*(T/T0)**(G/(R_GAS*LAPSE_RATE))
     else:
-        T_11k=T0-LAPSE_RATE*11000   # Temperatura parada en el 216.65 K
+        T_11k=T0-LAPSE_RATE*11000   # Tropopause at 216.65K
         P_11k=P0*(T_11k/T0)**(G/(R_GAS*LAPSE_RATE))
         T=T_11k
         P=P_11k*math.exp(-G*(h_m-11000)/(R_GAS*T))
     return P/(R_GAS*T)
 
-# Para simular el camino que baja cada avión debemos saber desde qué altura parte (h_max_m) y hasta qué altura hace una
-    # bajada continua (hasta el IAF), teniendo en cuenta las condiciones de pesos al llegar.
-# Los cálculos irán en el siguiente orden: thrust, velocidad mínima de RoD, drag, RoD, fuel flow y el
-    # conjunto de altura posición, peso y tiempo.
+# CDO simulated points
 
 def getCDO(aircraft_model, MLW_percent):
     avion = AIRCRAFT[aircraft_model]
 
-    # Conversión de unidades
-    hp_desc_m=avion.hp_desc*FT2M  # ft -> m
-    CT2=avion.CT2*FT2M  # ft -> m
-    CT3=avion.CT3/(FT2M**2)  # 1/ft^2 -> 1/m^2
-    CF1=avion.CF1/(60*1000)  # kg/(min*kN) -> kg/(s*N)
-    CF2=avion.CF2*KT2MS  # knots -> m/s
+    # Unit conversion
+    hp_desc_m=avion.hp_desc*FT2M  # ft --> m
+    CT2=avion.CT2*FT2M  # ft --> m
+    CT3=avion.CT3/(FT2M**2)  # 1/ft^2 --> 1/m^2
+    CF1=avion.CF1/(60*1000)  # kg/(min*kN) --> kg/(s*N)
+    CF2=avion.CF2*KT2MS  # knots --> m/s
 
-    # Condiciones iniciales
+    # Initial conditions
     x_now=0
     h_now=H_IAF
     m_now=avion.MLW*(MLW_percent/100)
@@ -116,23 +104,23 @@ def getCDO(aircraft_model, MLW_percent):
         area=avion.S
         CT1=avion.CT1
 
-        if h_now<(6000*FT2M):  # Configuración de aproximación (solo por debajo del IAF)
+        if h_now<(6000*FT2M):  # Approach configuration
             CD0=avion.CD0_app
             CD2=avion.CD2_app
             CTdesc=avion.CTdesc_app
         else:
             CD0=avion.CD0_clean
             CD2=avion.CD2_clean
-            if h_now>hp_desc_m:  # Si estamos en altura de descenso high...
+            if h_now>hp_desc_m:  # Over transition altitude
                 CTdesc=avion.CTdesc_high
-            else:  # O en la low
+            else:  # Under/Equal transition altitude
                 CTdesc=avion.CTdesc_low
 
         # Thrust
         Tmax=CT1*(1-(h_now/CT2)+(CT3*(h_now**2)))
         T_desc=CTdesc*Tmax
 
-        # Velocidad mínima RoD
+        # Min speed RoD
         term_thrust=T_desc/(m_now*G)
         v_minRoD=math.sqrt(((m_now*G)/(3*density*area*CD0))*(term_thrust+math.sqrt((term_thrust**2)+12*CD0*CD2)))
 
@@ -146,10 +134,10 @@ def getCDO(aircraft_model, MLW_percent):
         # Fuel flow
         FF=CF1*(1+v_minRoD/CF2)*T_desc
 
-        # Conjunto para los vectores (multiplicamos por 1 para representar el movimiento en 1 segundo, aunque numéricamente sea irrelevante)
-        h_next=h_now+RoD*1
-        x_next=x_now-v_minRoD*1
-        m_next= m_now+FF*1
+        # Results on a point (every second)
+        h_next=h_now+RoD
+        x_next=x_now-v_minRoD
+        m_next= m_now+FF
         t_next=t_now-1
 
         x_list.append(x_next)
@@ -161,7 +149,7 @@ def getCDO(aircraft_model, MLW_percent):
 
     return x_list, h_list, m_list, t_list
 
-# Ejecuta getCOD para cada vuelo que se encuentra en la lista FLIGHTS y devuelve una lista con los resultados
+# Do the previous function for all aircraft
 
 def run_all_flights():
     flights=FLIGHTS
@@ -171,7 +159,7 @@ def run_all_flights():
         results.append({"aircraft": flight.aircraft, "MLW_percent": flight.MLW_percent, "x": x, "h": h, "m": m, "t": t})
     return results
 
-# Función de testing que muestra información relevante en la consola (BORRAR LUEGO SI ES NECESARIO)
+# Testing shown on the console
 
 def testing(flight_results):
     print("AIRCRAFTS")
@@ -211,7 +199,7 @@ def testing(flight_results):
         print(f"  t -> inicio: {res["t"][0]:.2f} s   |  final: {res["t"][-1]:.2f} s")
 
 
-# ACCIONADOR DEL CÓDIGO
+# CODE STARTER
 
 if __name__ == "__main__":
     flight_results = run_all_flights()
