@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 # CLASSES
 
-# Classes that have all  the aircraft information
+# Class that have all the aircraft information
 # Everything comes from the WP1-Simulator development
 
 class Aircraft:
@@ -188,11 +188,11 @@ def testing(flight_results):
         print(f" [{i}] aircraft={flight.aircraft!r} " f"MLW_percent={flight.MLW_percent}")
 
     print("\n\n")
-    print("DATOS INICIO/FINAL")
+    print("DATA START/FINISH")
     for res in flight_results:
         n_puntos = len(res["h"])
         print(f"\n{res["aircraft"]} [{int(res["MLW_percent"])}% MLW]")
-        print(f"  numero de puntos simulados: {n_puntos}")
+        print(f"  Number of simulated points: {n_puntos}")
         print(f"  x -> inicio: {res["x"][0]:.2f} m   |  final: {res["x"][-1]:.2f} m")
         print(f"  h -> inicio: {res["h"][0]:.2f} m   |  final: {res["h"][-1]:.2f} m")
         print(f"  m -> inicio: {res["m"][0]:.2f} kg  |  final: {res["m"][-1]:.2f} kg")

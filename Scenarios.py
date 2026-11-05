@@ -30,12 +30,12 @@ class Arrival:
 # Vector named ARRIVALS with the previous class
 
 ARRIVALS = [
-    Arrival("B767-300ER", "ALBER1Z", 80,  19.5+22.4+10.5+6.9+10.4),    # ALBER-CUTXE-UTHAN-ENJUC-UCREQ-SLL
-    Arrival("B737",       "PUMAL1Z", 100, 11.8+14.2+5.9+8.7+10.4),     # PUMAL-BERGA-KOSIT-MAMUK-UCREQ-SLL
-    Arrival("B777-300",   "MARTA3Z", 100, 21.3+26.3+21.2+17.5+10),     # MARTA-EBROX-RES-VLA-BL463-SLL
-    Arrival("B767-300ER", "MATEX3Z", 80,  28.6+25.3+21.2+17.5+10),     # MATEX-SENIA-RES-VLA-BL463-SLL
-    Arrival("A319-131",   "LOBAR2W", 80,  36.7+35+10),                 # LOBAR-PEKIS-BL461-SLL
-    Arrival("A320-212",   "CASPE2W", 100, 41.0+20.1+17.5+10),          # CASPE-MECUH-VIBOK-BL461-SLL
+    Arrival("B767-300ER","ALBER1Z",80,19.5+22.4+10.5+6.9+10.4),    # ALBER-CUTXE-UTHAN-ENJUC-UCREQ-SLL
+    Arrival("B737","PUMAL1Z",100, 11.8+14.2+5.9+8.7+10.4),     # PUMAL-BERGA-KOSIT-MAMUK-UCREQ-SLL
+    Arrival("B777-300","MARTA3Z",100,21.3+26.3+21.2+17.5+10),     # MARTA-EBROX-RES-VLA-BL463-SLL
+    Arrival("B767-300ER","MATEX3Z",80,28.6+25.3+21.2+17.5+10),     # MATEX-SENIA-RES-VLA-BL463-SLL
+    Arrival("A319-131","LOBAR2W",80,36.7+35+10),                 # LOBAR-PEKIS-BL461-SLL
+    Arrival("A320-212","CASPE2W",100,41.0+20.1+17.5+10),          # CASPE-MECUH-VIBOK-BL461-SLL
 ]
 
 
@@ -82,7 +82,7 @@ def scenario_1():
     return sequence
 
 def print_scenario_1():
-    print("SCENARIO 1: arrival simultanea al primer WP a las 11:45:00")
+    print("SCENARIO 1: all arrivals to first WP at 11:45:00")
     print(f"{'Aircraft':<11}{'STAR':<9}{'%MLW':>5}{'Dist[km]':>10}{'Alt WP[m]':>11}{'Tiempo[s]':>11}{'ToA IAF':>10}{'order':>7}{'Sep[s]':>8}")
     for arrival in ARRIVALS:
         sep = "-" if arrival.sep_prev_1 is None else f"{arrival.sep_prev_1:.0f}"
@@ -100,7 +100,7 @@ def scenario_2(sequence):
         arrival.toa_wp_2=T_ARRIVAL+arrival.delay_2
 
 def print_scenario_2():
-    print("\nSCENARIO 2: 2 minutos exactos en el IAF, mismo order")
+    print("\nSCENARIO 2: 2 minutes each IAF, same order")
     print(f"{'Aircraft':<11}{'STAR':<9}{'%MLW':>5}{'order':>7}{'Alt WP[m]':>11}{'ToA IAF 2':>11}{'Retraso[s]':>12}{'ToA WP 2':>10}")
     for arrival in ARRIVALS:
         print(f"{arrival.aircraft:<11}{arrival.star:<9}{arrival.MLW_percent:>5}{arrival.order:>7}{arrival.alt_wp:>11.0f}"
